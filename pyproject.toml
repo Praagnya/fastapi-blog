@@ -5,6 +5,10 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12.1"
 dependencies = [
+    "aiosqlite>=0.22.1",
     "fastapi[standard]>=0.138.1",
+    "greenlet>=3.5.3",
+    "pwdlib[argon,argon2]>=0.3.0",
+    "pyjwt>=2.13.0",
     "sqlalchemy>=2.0.51",
 ]
