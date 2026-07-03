@@ -19,6 +19,7 @@ from database import Base, engine, get_db
 from router import post, user
 
 
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     # Startup
@@ -44,7 +45,9 @@ templates = Jinja2Templates(directory="templates")
 @app.get("/posts", include_in_schema=False, name="posts")
 async def home(request: Request, db: Annotated[AsyncSession, Depends(get_db)]):
     result = await db.execute(
-        select(models.Post).options(selectinload(models.Post.author)).order_by(models.Post.id.desc()),
+        select(models.Post)
+        .options(selectinload(models.Post.author))
+        .order_by(models.Post.date_posted.desc()),
     )
     posts = result.scalars().all()
     return templates.TemplateResponse(
@@ -65,13 +68,13 @@ async def post_page(
         .options(selectinload(models.Post.author))
         .where(models.Post.id == post_id),
     )
-    post_obj = result.scalars().first()
-    if post_obj:
-        title = post_obj.title[:50]
+    post = result.scalars().first()
+    if post:
+        title = post.title[:50]
         return templates.TemplateResponse(
             request,
             "post.html",
-            {"post": post_obj, "title": title},
+            {"post": post, "title": title},
         )
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
 
@@ -83,20 +86,41 @@ async def user_posts_page(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     result = await db.execute(select(models.User).where(models.User.id == user_id))
-    user_obj = result.scalars().first()
-    if not user_obj:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
     result = await db.execute(
         select(models.Post)
         .options(selectinload(models.Post.author))
         .where(models.Post.user_id == user_id)
-        .order_by(models.Post.id.desc()),
+        .order_by(models.Post.date_posted.desc()),
     )
     posts = result.scalars().all()
     return templates.TemplateResponse(
         request,
         "user_posts.html",
-        {"posts": posts, "user": user_obj, "title": f"{user_obj.username}'s Posts"},
+        {"posts": posts, "user": user, "title": f"{user.username}'s Posts"},
+    )
+
+
+@app.get("/login", include_in_schema=False, name="login_page")
+async def login_page(request: Request):
+    return templates.TemplateResponse(
+        request,
+        "login.html",
+        {"title": "Login"},
+    )
+
+
+@app.get("/register", include_in_schema=False, name="register_page")
+async def register_page(request: Request):
+    return templates.TemplateResponse(
+        request,
+        "register.html",
+        {"title": "Register"},
     )
 
 
